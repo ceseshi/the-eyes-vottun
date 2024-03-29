@@ -11,9 +11,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <h2>A collection of unique NFTs on the Mumbai blockchain</h2>
     <h3>Featuring: <a href="https://app.vottun.io/" target="_blank">Vottun Web3 API</a></h3>
 
-    <div id="images" class="row"></div>
+    <button id="reload" class="button">Reload</button>
+    <div id="loader" class="mt-5">Loading...</div>
+    <div id="apierror" class="mt-5" style="display:none">Temporary API error, please try again later.</div>
+    <div id="images" class="row mt-5"></div>
 
-    <footer>
+    <footer class="mt-5">
       <a href="https://vitejs.dev" target="_blank">
         <img src="${viteLogo}" class="logo" alt="Vite logo" />
       </a>
@@ -29,9 +32,46 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </footer>
   </div>
 `
+const imagesContainer = document.querySelector('#images')
+const imagesLoader = document.querySelector('#loader')
+const apiError = document.querySelector('#apierror')
+const btnReload = document.querySelector('#reload')
+const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS
+let itemList:any = []
+
+btnReload?.addEventListener('click', () => {
+  if (imagesContainer) {
+    itemList = []
+    sessionStorage.setItem('itemList', JSON.stringify(itemList))
+    imagesContainer.innerHTML = ''
+    imagesLoader?.removeAttribute('style')
+    apiError?.setAttribute('style', 'display:none')
+    loadItem(1)
+  }
+})
+
+// retrieve itemList
+if (sessionStorage.getItem('itemList')) {
+  itemList = JSON.parse(sessionStorage.getItem('itemList') || '[]')
+}
+
+if (imagesContainer) {
+  if (itemList.length) {
+    itemList.forEach((item:any) => {
+      generateImage(item.tokenId, item.image)
+    })
+  }
+  else {
+  // load NFTs from id 1
+    loadItem(1)
+  }
+}
+
 // Loads one NFT
 function loadItem(tokenId:number) {
-  const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS
+  if (tokenId > 20) {
+    return
+  }
 
   // authentication
   const headers = {
@@ -53,26 +93,9 @@ function loadItem(tokenId:number) {
       // get image
       axios.get(response.data.uri)
       .then(res => {
-        // generate image
-        const imagesContainer = document.querySelector('#images')
-
-        const imageDiv = document.createElement('div')
-        imageDiv.className= 'col-sm-4 col-md-3 mb-3'
-
-        const link = document.createElement('a')
-        link.href = `https://testnets.opensea.io/es/assets/mumbai/${contractAddress}/${tokenId}`
-        link.target = '_blank'
-        link.title = 'View on OpenSea'
-
-        const image = document.createElement('img')
-        image.className= 'w-100 rounded'
-        image.src = res.data.image
-
-        link.appendChild(image)
-        imageDiv.appendChild(link)
-        if (imagesContainer) {
-          imagesContainer.appendChild(imageDiv)
-        }
+        itemList.push({tokenId: tokenId, image: res.data.image})
+        sessionStorage.setItem('itemList', JSON.stringify(itemList))
+        generateImage(tokenId, res.data.image)
       })
       .catch((err) => {
         console.log(`Error: ${err}`)
@@ -84,10 +107,29 @@ function loadItem(tokenId:number) {
   .catch(error => {
     //console.log(error.response.data)
     if (error.response.data.message.search("nonexistent token") == -1) {
-      alert("Temporary API error, please try again later")
+      imagesLoader?.setAttribute('style', 'display:none')
+      apiError?.removeAttribute('style')
     }
   })
 }
 
-// lLoad NFTs from id 1
-loadItem(1)
+function generateImage(tokenId:number, imageUrl:string) {
+  imagesLoader?.setAttribute('style', 'display:none')
+
+  // generate image
+  const imageDiv = document.createElement('div')
+  imageDiv.className= 'col-sm-4 col-md-3 mb-3'
+
+  const link = document.createElement('a')
+  link.href = `https://testnets.opensea.io/es/assets/mumbai/${contractAddress}/${tokenId}`
+  link.target = '_blank'
+  link.title = 'View on OpenSea'
+
+  const image = document.createElement('img')
+  image.className= 'w-100 rounded'
+  image.src = imageUrl
+
+  link.appendChild(image)
+  imageDiv.appendChild(link)
+  imagesContainer?.appendChild(imageDiv)
+}
