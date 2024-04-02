@@ -4,7 +4,7 @@ import viteLogo from '/vite.svg'
 import vottunLogo from '/vottun-white.png'
 import axios from 'axios'
 
-// template
+// Html Template
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div>
     <h1>The Eyes</h1>
@@ -50,7 +50,7 @@ btnReload?.addEventListener('click', () => {
   }
 })
 
-// retrieve itemList
+// Retrieve itemList
 if (sessionStorage.getItem('itemList')) {
   itemList = JSON.parse(sessionStorage.getItem('itemList') || '[]')
 }
@@ -62,7 +62,7 @@ if (imagesContainer) {
     })
   }
   else {
-  // load NFTs from id 1
+  // Load NFTs from id 1
     loadItem(1)
   }
 }
@@ -73,7 +73,7 @@ function loadItem(tokenId:number) {
     return
   }
 
-  // authentication
+  // Authentication
   const headers = {
     'Content-Type': 'application/json',
     'Authorization': 'Bearer '+import.meta.env.VITE_VOTTUN_API_KEY,
@@ -81,16 +81,16 @@ function loadItem(tokenId:number) {
   }
 
   // NFT params
-  const params = {
-    contractAddress: contractAddress,
-    network: 80001,
-    id: tokenId,
-  }
+  const params = [
+    ["contractAddress", contractAddress],
+    ["network", 80001],
+    ["id", tokenId]
+  ]
 
-  // get metadata
-  axios.post('https://api.vottun.tech/erc/v1/erc721/tokenUri', params, { headers })
+  // Get metadata url
+  axios.get('https://api.vottun.tech/erc/v1/erc721/tokenUri?'+(new URLSearchParams(params)), { headers })
   .then(response => {
-      // get image
+      // Get image url
       axios.get(response.data.uri)
       .then(res => {
         itemList.push({tokenId: tokenId, image: res.data.image})
@@ -101,11 +101,12 @@ function loadItem(tokenId:number) {
         console.log(`Error: ${err}`)
       })
 
-      // load next NFT
-      loadItem(tokenId+1)
+      // Load next NFT with a limit of 4, because of rate limits
+      if (tokenId < 4) {
+        loadItem(tokenId+1)
+      }
   })
   .catch(error => {
-    //console.log(error.response.data)
     if (error.response.data.message.search("nonexistent token") == -1) {
       imagesLoader?.setAttribute('style', 'display:none')
       apiError?.removeAttribute('style')
@@ -116,7 +117,7 @@ function loadItem(tokenId:number) {
 function generateImage(tokenId:number, imageUrl:string) {
   imagesLoader?.setAttribute('style', 'display:none')
 
-  // generate image
+  // Generate image
   const imageDiv = document.createElement('div')
   imageDiv.className= 'col-sm-4 col-md-3 mb-3'
 
